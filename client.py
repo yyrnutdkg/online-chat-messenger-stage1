@@ -1,61 +1,59 @@
-import socket
 import os
-import time
+import socket
 import threading
-
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-
-server_address = '/home/vagrant/work/recursion-stage1/udp_socket_file'
-address = '/home/vagrant/work/recursion-stage1/udp_client_socket_file'
+import time
 
 
-def start_client():
+class ChatClient:
+  def __init__(self, server_address, client_address):
+    self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    self.server_address = server_address
+    self.client_address = client_address
+    self.stop_receive_thread_flag = threading.Event()
+    self.user_name = input('Please enter your username : ')
 
-  sock.bind(address)
+  def send_message(self, message):
+    encoded_message = f"{len(self.user_name.encode('utf-8'))}:{message.encode('utf-8')}"
+    print('Send message: {}'.format(encoded_message))
+    self.sock.sendto(encoded_message, self.server_address)
 
-  check_received_message_thread = threading.Thread(target=check_received_message)
-  check_received_message_thread.start()
+  def check_received_message(self):
+    while not self.stop_receive_thread_flag.is_set():
+      print('Check message...')
 
-  try:
-    input_username = input('ユーザ名を入力: ')
-    input_message = input('メッセージを入力: ')
+      data, server = self.sock.recvfrom(4096)
 
-    username_len = len(input_username)
+      if data:
+        received_message = data.decode('utf-8')
+        print('Received: {}'.format(received_message))
 
-    message_with_userlen = f"{username_len}:{input_message}"
-
-    print('送信メッセージ: {}'.format(message_with_userlen))
-
-    message_encoded = message_with_userlen.encode('utf-8')
-    sent = sock.sendto(message_encoded, server_address)
-
-    print('waiting to receive')
-    data, server = sock.recvfrom(4096)
-
-    data_decoded = data.decode('utf-8')
-    print('received {}'.format(data_decoded))
-
-  finally:
-    print('closing socket')
-    sock.close()
+  def start_chat(self):
+    print('Chat start...')
+    self.sock.bind(self.client_address)
+    check_received_message_thread = threading.Thread(target=self.check_received_message)
+    check_received_message_thread.start()
 
     try:
-      os.unlink(address)
+      message = input('Please enter a message : ')
+      self.send_message(message)
+
+    finally:
+      self.close()
+
+
+  def close(self):
+    print('Closing socket...')
+    self.stop_flag.set()
+    self.sock.close()
+
+    try:
+      os.unlink(self.client_address)
     except FileNotFoundError:
       pass
 
-
-def check_received_message():
-  while True:
-    print('check message')
-    data, server = sock.recvfrom(4096)
-
-    if data:
-      data_decoded = data.decode('utf-8')
-      print('received {}'.format(data_decoded))
-
-    time.sleep(10)
-
-
 if __name__ == "__main__":
-  start_client()
+  server_address = '/home/vagrant/work/online-chat-messenger-stage1/udp_socket_file'
+  client_address = '/home/vagrant/work/online-chat-messenger-stage1/udp_client_socket_file'
+
+  client_chat = ChatClient(server_address, client_address)
+  client_chat.start_chat()
