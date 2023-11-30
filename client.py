@@ -13,7 +13,7 @@ class ChatClient:
     self.user_name = input('Please enter your username : ')
 
   def send_message(self, message):
-    encoded_message = f"{len(self.user_name.encode('utf-8'))}:{message.encode('utf-8')}"
+    encoded_message = f"{len(self.user_name)}:{message}".encode('utf-8')
     print('Send message: {}'.format(encoded_message))
     self.sock.sendto(encoded_message, self.server_address)
 
@@ -36,6 +36,7 @@ class ChatClient:
     try:
       message = input('Please enter a message : ')
       self.send_message(message)
+      time.sleep(10)
 
     finally:
       self.close()
@@ -43,7 +44,7 @@ class ChatClient:
 
   def close(self):
     print('Closing socket...')
-    self.stop_flag.set()
+    self.stop_receive_thread_flag.set()
     self.sock.close()
 
     try:
